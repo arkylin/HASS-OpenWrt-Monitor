@@ -18,4 +18,4 @@ DEFAULT_SCAN_INTERVAL = 30
 DEFAULT_TIMEOUT = 10
 DEFAULT_IDENTITY_MODE = IDENTITY_HOSTNAME_OR_MAC
 
-PLATFORMS = ["device_tracker", "binary_sensor", "sensor"]
+PLATFORMS = ["binary_sensor", "sensor"]

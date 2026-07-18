@@ -2,23 +2,121 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.core import callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import OpenWrtMonitorConfigEntry
 from .const import DOMAIN
 from .coordinator import OpenWrtMonitorCoordinator
+from .entity import OpenWrtMonitorEntity
+from .models import OpenWrtClient
+
+
+@dataclass(frozen=True, slots=True)
+class OpenWrtClientSensorDescription:
+    """Describe a per-client sensor."""
+
+    key: str
+    name: str
+    value_fn: Callable[[OpenWrtClient], Any]
+    icon: str | None = None
+    device_class: SensorDeviceClass | None = None
+    native_unit_of_measurement: str | None = None
+    always_create: bool = False
+
+
+def _lease_time(client: OpenWrtClient) -> datetime | None:
+    """Return the DHCP lease time as a timestamp."""
+    if client.lease_time is None:
+        return None
+    return datetime.fromtimestamp(client.lease_time, timezone.utc)
+
+
+def _float_attr(client: OpenWrtClient, attr: str) -> float | None:
+    """Return a float from a string-ish client attribute."""
+    value = getattr(client, attr)
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+CLIENT_SENSOR_DESCRIPTIONS: tuple[OpenWrtClientSensorDescription, ...] = (
+    OpenWrtClientSensorDescription(
+        key="mac",
+        name="MAC address",
+        value_fn=lambda client: client.mac,
+        icon="mdi:lan",
+        always_create=True,
+    ),
+    OpenWrtClientSensorDescription(
+        key="ip",
+        name="IP address",
+        value_fn=lambda client: client.ip,
+        icon="mdi:ip-network",
+        always_create=True,
+    ),
+    OpenWrtClientSensorDescription(
+        key="connection_type",
+        name="Connection type",
+        value_fn=lambda client: client.type,
+        icon="mdi:connection",
+        always_create=True,
+    ),
+    OpenWrtClientSensorDescription(
+        key="rssi",
+        name="RSSI",
+        value_fn=lambda client: client.rssi,
+        icon="mdi:wifi-strength-2",
+        device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+        native_unit_of_measurement="dBm",
+    ),
+    OpenWrtClientSensorDescription(
+        key="tx_rate",
+        name="TX rate",
+        value_fn=lambda client: _float_attr(client, "tx_rate"),
+        icon="mdi:upload-network",
+        native_unit_of_measurement="Mbit/s",
+    ),
+    OpenWrtClientSensorDescription(
+        key="rx_rate",
+        name="RX rate",
+        value_fn=lambda client: _float_attr(client, "rx_rate"),
+        icon="mdi:download-network",
+        native_unit_of_measurement="Mbit/s",
+    ),
+    OpenWrtClientSensorDescription(
+        key="interface",
+        name="Interface",
+        value_fn=lambda client: client.interface,
+        icon="mdi:access-point-network",
+    ),
+    OpenWrtClientSensorDescription(
+        key="lease_time",
+        name="Lease time",
+        value_fn=_lease_time,
+        icon="mdi:timer-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        always_create=True,
+    ),
+)
 
 
 async def async_setup_entry(
     hass,
     entry: OpenWrtMonitorConfigEntry,
-    async_add_entities,
+    async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up aggregate monitor sensors."""
+    """Set up aggregate and per-client monitor sensors."""
     coordinator = entry.runtime_data.coordinator
     async_add_entities(
         [
@@ -45,6 +143,30 @@ async def async_setup_entry(
             ),
             OpenWrtTimestampSensor(coordinator, entry.entry_id),
         ]
+    )
+
+    known_client_sensors: set[tuple[str, str]] = set()
+
+    @callback
+    def async_add_missing_client_sensors() -> None:
+        entities = []
+        if coordinator.data is None:
+            return
+        for identity, client in coordinator.data.clients.items():
+            for description in CLIENT_SENSOR_DESCRIPTIONS:
+                if not description.always_create and description.value_fn(client) is None:
+                    continue
+                entity_key = (identity, description.key)
+                if entity_key in known_client_sensors:
+                    continue
+                known_client_sensors.add(entity_key)
+                entities.append(OpenWrtClientSensor(entry, identity, description))
+        if entities:
+            async_add_entities(entities)
+
+    async_add_missing_client_sensors()
+    entry.async_on_unload(
+        coordinator.async_add_listener(async_add_missing_client_sensors)
     )
 
 
@@ -127,3 +249,36 @@ class OpenWrtTimestampSensor(CoordinatorEntity[OpenWrtMonitorCoordinator], Senso
         if self.coordinator.data is None:
             return {}
         return {"raw_timestamp": self.coordinator.data.timestamp}
+
+
+class OpenWrtClientSensor(OpenWrtMonitorEntity, SensorEntity):
+    """Represent one monitored client field as a sensor."""
+
+    def __init__(
+        self,
+        entry: OpenWrtMonitorConfigEntry,
+        identity: str,
+        description: OpenWrtClientSensorDescription,
+    ) -> None:
+        """Initialize the client sensor."""
+        super().__init__(entry.runtime_data.coordinator, entry.entry_id, identity)
+        self._description = description
+        self._attr_unique_id = f"{entry.entry_id}_{identity}_{description.key}"
+        self._attr_name = description.name
+        self._attr_icon = description.icon
+        self._attr_device_class = description.device_class
+        self._attr_native_unit_of_measurement = description.native_unit_of_measurement
+
+    @property
+    def available(self) -> bool:
+        """Return whether the field is available for this client."""
+        if not super().available or self.client is None:
+            return False
+        return self.native_value is not None
+
+    @property
+    def native_value(self) -> Any:
+        """Return the current field value."""
+        if (client := self.client) is None:
+            return None
+        return self._description.value_fn(client)

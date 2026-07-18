@@ -33,16 +33,25 @@ and creates Home Assistant entities from a response shaped like:
 
 ## What it creates
 
-- `device_tracker` entity for every configured device identity.
 - `binary_sensor` connectivity entity for every configured device identity.
+- Per-device sensors:
+  - MAC address
+  - IP address
+  - Connection type
+  - RSSI
+  - TX rate
+  - RX rate
+  - Interface
+  - Lease time
 - Aggregate sensors:
   - connected clients
   - total clients
   - offline clients
   - API timestamp
 
-Wireless clients also expose attributes such as `rssi`, `tx_rate`, `rx_rate`,
-and `interface` when the API returns them.
+The integration does not create `device_tracker` entities. It monitors the raw
+client state from the API instead of translating router clients into
+`home`/`not_home` presence states.
 
 ## Install with HACS
 
