@@ -133,3 +133,7 @@ Recommended client fields:
 This integration is designed for a trusted LAN endpoint. If the API is exposed
 outside your local network, use HTTPS or a VPN because the Bearer token is sent
 with every poll.
+
+## License
+
+MIT
