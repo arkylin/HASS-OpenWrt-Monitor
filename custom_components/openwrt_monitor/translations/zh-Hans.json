@@ -1,0 +1,54 @@
+{
+  "title": "OpenWrt 设备监控",
+  "config": {
+    "step": {
+      "user": {
+        "title": "配置 OpenWrt 设备监控",
+        "description": "填写内网 /devices 接口地址和 Bearer Token。Token 可以只填原始值，也可以填完整的 'Bearer ...'。",
+        "data": {
+          "url": "设备接口地址",
+          "token": "Bearer Token",
+          "scan_interval": "轮询间隔（秒）",
+          "timeout": "请求超时（秒）",
+          "identity_mode": "设备识别方式"
+        }
+      },
+      "reauth_confirm": {
+        "title": "更新 OpenWrt 设备监控 Token",
+        "description": "接口拒绝了已保存的 Token，请填写新的 Bearer Token。",
+        "data": {
+          "token": "Bearer Token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "无法连接接口。",
+      "invalid_auth": "接口拒绝了 Token。",
+      "invalid_response": "接口返回格式不符合预期。",
+      "unknown": "发生未知错误。"
+    },
+    "abort": {
+      "already_configured": "这个接口已经配置过了。",
+      "reauth_successful": "Token 已更新。"
+    }
+  },
+  "selector": {
+    "identity_mode": {
+      "options": {
+        "hostname_or_mac": "优先设备名，其次 MAC",
+        "mac": "仅使用 MAC 地址"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "OpenWrt 设备监控选项",
+        "description": "调整轮询行为。",
+        "data": {
+          "scan_interval": "轮询间隔（秒）"
+        }
+      }
+    }
+  }
+}

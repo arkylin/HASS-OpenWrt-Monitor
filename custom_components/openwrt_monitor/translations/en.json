@@ -1,0 +1,54 @@
+{
+  "title": "OpenWrt Device Monitor",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up OpenWrt Device Monitor",
+        "description": "Enter the local /devices API endpoint and Bearer token. The token field accepts either the raw token or the full 'Bearer ...' value.",
+        "data": {
+          "url": "Devices API URL",
+          "token": "Bearer token",
+          "scan_interval": "Scan interval (seconds)",
+          "timeout": "Request timeout (seconds)",
+          "identity_mode": "Device identity mode"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Update OpenWrt Device Monitor token",
+        "description": "The API rejected the stored token. Enter a new Bearer token.",
+        "data": {
+          "token": "Bearer token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the API.",
+      "invalid_auth": "The API rejected the token.",
+      "invalid_response": "The API response did not match the expected devices format.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This endpoint is already configured.",
+      "reauth_successful": "Token updated successfully."
+    }
+  },
+  "selector": {
+    "identity_mode": {
+      "options": {
+        "hostname_or_mac": "Hostname first, then MAC",
+        "mac": "MAC address only"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "OpenWrt Device Monitor options",
+        "description": "Adjust polling behavior.",
+        "data": {
+          "scan_interval": "Scan interval (seconds)"
+        }
+      }
+    }
+  }
+}

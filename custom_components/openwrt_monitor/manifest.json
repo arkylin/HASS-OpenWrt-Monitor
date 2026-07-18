@@ -1,0 +1,13 @@
+{
+  "domain": "openwrt_monitor",
+  "name": "OpenWrt Device Monitor",
+  "after_dependencies": ["http"],
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/arkylin/HASS-OpenWrt-Monitor",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/arkylin/HASS-OpenWrt-Monitor/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
